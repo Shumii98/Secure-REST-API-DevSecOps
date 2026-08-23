@@ -12,6 +12,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
 
+    env:
+      API_TOKEN: dev-secret-token
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
