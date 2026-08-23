@@ -492,7 +492,25 @@ This provides an automated security feedback loop during development.
 | GitHub Actions | CI / DevSecOps automation |
 
 ---
+## Screenshots
 
+### Swagger / OpenAPI Documentation
+
+The interactive Swagger UI exposes the available API endpoints and provides an interface for testing the REST API.
+
+![Swagger API Documentation](screenshots/swagger-api.png)
+
+### Authenticated Health Check
+
+The protected `/health` endpoint returns a successful response when a valid Bearer token is provided.
+
+![Authenticated Health Check](screenshots/authenticated-health.png)
+
+### Automated Security Tests
+
+The security test suite validates authentication, authorization behavior, security headers, and protected endpoints.
+
+![Security Tests Passed](screenshots/security-tests-passed.png)
 ## Security Testing Results
 
 ### Local Testing
