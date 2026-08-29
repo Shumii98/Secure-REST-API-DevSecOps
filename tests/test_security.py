@@ -90,4 +90,69 @@ def test_security_headers_on_protected_endpoint():
     assert response.status_code == 200
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["x-content-type-options"] == "nosniff"
-    
+
+
+def test_analyst_cannot_access_admin_dashboard():
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "security-user",
+            "password": "DevSecOps@123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.get(
+        "/api/v1/admin/dashboard",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_admin_can_access_admin_dashboard():
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "admin-user",
+            "password": "AdminPass@123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.get(
+        "/api/v1/admin/dashboard",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "admin-user"
+
+
+def test_profile_returns_correct_role():
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "security-user",
+            "password": "DevSecOps@123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.get(
+        "/api/v1/profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "analyst"
+

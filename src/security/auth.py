@@ -48,3 +48,16 @@ def verify_token(
             detail="Invalid or expired authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def require_role(required_role: str):
+    def role_checker(payload: dict = Depends(verify_token)):
+        if payload.get("role") != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource",
+            )
+
+        return payload
+
+    return role_checker
