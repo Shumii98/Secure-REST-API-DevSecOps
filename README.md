@@ -2,27 +2,30 @@
 
 [![Security CI](https://github.com/Shumii98/Secure-REST-API-DevSecOps/actions/workflows/security.yml/badge.svg)](https://github.com/Shumii98/Secure-REST-API-DevSecOps/actions/workflows/security.yml)
 
-A security-focused REST API built with **FastAPI** and designed around practical **DevSecOps principles**. The project implements bearer-token authentication, security headers, automated security testing, dependency vulnerability scanning, and a GitHub Actions CI pipeline.
+A security-focused REST API built with **FastAPI** and designed around practical **DevSecOps principles**.
+
+The project demonstrates JWT-based authentication, protected API endpoints, HTTP security headers, automated security testing, dependency vulnerability auditing, environment-based configuration, and continuous security checks through GitHub Actions.
 
 ---
 
 ## Overview
 
-This project demonstrates how security controls can be integrated directly into the API development lifecycle.
+This project demonstrates how security controls can be integrated into the API development lifecycle rather than being added only after application development.
 
-The application includes:
+### Security capabilities
 
-- 🔐 Bearer-token authentication
-- 🛡️ HTTP security headers
-- 🔒 Protected API endpoints
-- 🌐 API versioning
-- 🧪 Automated security testing with `pytest`
-- 🔍 Dependency vulnerability scanning with `pip-audit`
-- ⚙️ GitHub Actions security CI
-- 🔑 Environment-based secret configuration
-- 📦 Pinned application dependencies
+* 🔐 JWT Bearer-token authentication
+* 🔒 Protected API endpoints
+* 🛡️ HTTP security headers through middleware
+* ⏱️ JWT expiration handling
+* 🌐 Versioned API endpoint
+* 🧪 Automated security testing with `pytest`
+* 🔍 Dependency vulnerability scanning with `pip-audit`
+* ⚙️ GitHub Actions security CI
+* 🔑 Environment-based secret configuration
+* 📦 Separate application and development dependencies
 
-The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow**, rather than simply building a REST API.
+The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow** for a Python REST API.
 
 ---
 
@@ -33,90 +36,125 @@ The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow**, rat
                          │      API Client      │
                          └──────────┬───────────┘
                                     │
-                                    │ HTTP Request
+                              HTTP Request
+                                    │
                                     ▼
                          ┌──────────────────────┐
                          │      FastAPI API     │
                          └──────────┬───────────┘
                                     │
-                    ┌───────────────┴───────────────┐
-                    │                               │
-                    ▼                               ▼
-          ┌──────────────────┐           ┌──────────────────┐
-          │ Authentication   │           │ Security Headers │
-          │ Bearer Token     │           │ Middleware       │
-          └────────┬─────────┘           └────────┬─────────┘
-                   │                              │
-                   ▼                              │
-          ┌──────────────────┐                    │
-          │ Protected API    │◄───────────────────┘
-          │ Endpoints        │
-          └────────┬─────────┘
-                   │
-                   ▼
-          ┌──────────────────┐
-          │ JSON Response    │
-          └──────────────────┘
+                   ┌────────────────┴────────────────┐
+                   │                                 │
+                   ▼                                 ▼
+          ┌──────────────────┐             ┌──────────────────┐
+          │ JWT Authentication│             │ Security Headers │
+          │ Bearer Token      │             │ Middleware       │
+          └────────┬─────────┘             └────────┬─────────┘
+                   │                                 │
+                   └───────────────┬─────────────────┘
+                                   │
+                                   ▼
+                         ┌──────────────────────┐
+                         │  Protected API      │
+                         │     Endpoints       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    JSON Response     │
+                         └──────────────────────┘
+```
 
+### DevSecOps CI Pipeline
 
-                    DevSecOps Pipeline
-                    ==================
-
-          ┌───────────────┐
-          │ Git Push / PR │
-          └───────┬───────┘
-                  │
-                  ▼
-          ┌───────────────────┐
-          │ GitHub Actions    │
-          │ Security CI       │
-          └─────────┬─────────┘
-                    │
-             ┌──────┴───────┐
-             │              │
-             ▼              ▼
-        ┌──────────┐   ┌─────────────┐
-        │ pytest   │   │ pip-audit   │
-        │ 9 tests  │   │ Dependency  │
-        └────┬─────┘   │ scanning    │
-             │         └──────┬──────┘
-             │                │
-             └────────┬───────┘
-                      ▼
-                ┌───────────┐
-                │ CI Result │
-                │   GREEN   │
-                └───────────┘
+```text
+                    Git Push / Pull Request
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │   GitHub Actions  │
+                    │    Security CI    │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+              ┌──────────┐       ┌─────────────┐
+              │  pytest  │       │  pip-audit  │
+              │ 9 tests  │       │ Dependency  │
+              └────┬─────┘       │    Scan     │
+                   │              └──────┬──────┘
+                   │                     │
+                   └──────────┬──────────┘
+                              ▼
+                       ┌─────────────┐
+                       │  CI Result  │
+                       │    PASS     │
+                       └─────────────┘
 ```
 
 ---
 
 ## Security Controls
 
-### 1. Authentication
+### 1. JWT Authentication
 
-Protected endpoints require a Bearer token.
+The API uses **JSON Web Tokens (JWT)** with the HS256 signing algorithm.
 
-Example:
+The authentication flow is:
 
-```http
-Authorization: Bearer <API_TOKEN>
+```text
+Username + Password
+        │
+        ▼
+POST /auth/login
+        │
+        ▼
+Credentials validated
+        │
+        ▼
+JWT access token generated
+        │
+        ▼
+Authorization: Bearer <token>
+        │
+        ▼
+Protected endpoint
 ```
 
-The token is loaded from an environment variable rather than being hard-coded into the application.
+JWT tokens contain:
 
-The authentication layer rejects:
+* `sub` — authenticated username
+* `exp` — token expiration timestamp
 
-- Missing authentication
-- Invalid tokens
+Protected endpoints reject requests without valid authentication.
 
-Valid authentication allows access to protected endpoints.
+The application returns:
+
+```text
+401 Unauthorized
+```
+
+when authentication is missing or invalid.
 
 ---
 
-### 2. Security Headers
+### 2. Protected Endpoints
 
-The application applies security-related HTTP response headers through middleware.
+The following endpoints require a valid Bearer token:
+
+```text
+GET /health
+GET /api/v1/profile
+```
+
+Authentication is implemented using FastAPI dependencies and JWT verification.
+
+---
+
+### 3. Security Headers
+
+Security-related HTTP response headers are applied through custom middleware.
 
 Current headers include:
 
@@ -124,16 +162,16 @@ Current headers include:
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 Referrer-Policy: no-referrer
-Permissions-Policy: geolocation=(), microphone=(), camera=()
+Permissions-Policy: geolocation=(),microphone=(),camera=()
 ```
 
 These controls help reduce common browser-side security risks such as MIME sniffing, clickjacking, unnecessary referrer exposure, and unwanted browser feature access.
 
 ---
 
-### 3. API Versioning
+### 4. API Versioning
 
-Protected API functionality is exposed under a versioned path:
+The profile endpoint is exposed under a versioned API path:
 
 ```text
 /api/v1/
@@ -151,13 +189,45 @@ This provides a foundation for maintaining API compatibility as the application 
 
 ## API Endpoints
 
-| Method | Endpoint | Authentication | Purpose |
-|--------|----------|----------------|---------|
-| GET | `/` | Public | API status |
-| GET | `/health` | Required | Health check |
-| GET | `/api/v1/profile` | Required | Retrieve authenticated profile |
+| Method | Endpoint          | Authentication | Purpose                         |
+| ------ | ----------------- | -------------- | ------------------------------- |
+| `GET`  | `/`               | Public         | API status                      |
+| `POST` | `/auth/login`     | Public         | Authenticate user and issue JWT |
+| `GET`  | `/health`         | Required       | Protected health check          |
+| `GET`  | `/api/v1/profile` | Required       | Retrieve authenticated profile  |
 
-### Example: Root Endpoint
+---
+
+### Login
+
+```http
+POST /auth/login
+Content-Type: application/json
+```
+
+Example request:
+
+```json
+{
+  "username": "security-user",
+  "password": "DevSecOps@123"
+}
+```
+
+Successful response:
+
+```json
+{
+  "access_token": "<JWT_TOKEN>",
+  "token_type": "bearer"
+}
+```
+
+> The demo credentials are intended only for local/educational use. Never use them in production.
+
+---
+
+### Root Endpoint
 
 ```http
 GET /
@@ -172,11 +242,13 @@ Example response:
 }
 ```
 
-### Example: Health Check
+---
+
+### Health Check
 
 ```http
 GET /health
-Authorization: Bearer <API_TOKEN>
+Authorization: Bearer <JWT_TOKEN>
 ```
 
 Example response:
@@ -187,19 +259,38 @@ Example response:
 }
 ```
 
-### Example: Profile
+Requests without authentication are rejected with:
+
+```json
+{
+  "detail": "Not authenticated"
+}
+```
+
+---
+
+### Profile
 
 ```http
 GET /api/v1/profile
-Authorization: Bearer <API_TOKEN>
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-Example response:
+Example authenticated response:
 
 ```json
 {
   "username": "security-user",
-  "role": "analyst"
+  "role": "analyst",
+  "message": "Authenticated access granted"
+}
+```
+
+Invalid or forged tokens are rejected with:
+
+```json
+{
+  "detail": "Invalid or expired authentication token"
 }
 ```
 
@@ -220,7 +311,10 @@ Secure-REST-API-DevSecOps/
 │   └── security/
 │       ├── __init__.py
 │       ├── auth.py
-│       └── middleware.py
+│       ├── middleware.py
+│       ├── schemas.py
+│       ├── users.py
+│       └── jwt_config.py
 │
 ├── tests/
 │   └── test_security.py
@@ -235,9 +329,9 @@ Secure-REST-API-DevSecOps/
 
 ## DevSecOps Pipeline
 
-The project uses GitHub Actions to automatically perform security checks on pushes and pull requests targeting the `main` branch.
+The project uses **GitHub Actions** to automatically execute security checks on pushes and pull requests targeting the `main` branch.
 
-### Pipeline
+### Pipeline workflow
 
 ```text
 Git Push / Pull Request
@@ -249,113 +343,126 @@ Git Push / Pull Request
       Setup Python
           │
           ▼
- Install Dependencies
+   Install Dependencies
           │
-          ├───────────────┐
-          ▼               ▼
-       pytest         pip-audit
-          │               │
-          ▼               ▼
-    Security Tests    Dependency Scan
-          │               │
-          └───────┬───────┘
-                  ▼
+          ├─────────────────┐
+          ▼                 ▼
+       pytest           pip-audit
+          │                 │
+          ▼                 ▼
+   Security Tests     Dependency Scan
+          │                 │
+          └────────┬────────┘
+                   ▼
              CI Result
 ```
 
-### Automated Checks
+### Automated checks
 
 The CI pipeline performs:
 
-```text
 1. Python environment setup
 2. Dependency installation
-3. Security test execution
-4. Dependency vulnerability audit
-```
+3. Full pytest test-suite execution
+4. Dependency vulnerability auditing
 
-The current pipeline successfully passes:
+The workflow is defined in:
 
 ```text
-9 security tests
-0 known dependency vulnerabilities
+.github/workflows/security.yml
 ```
 
 ---
 
 ## Testing
 
-Security tests are implemented using `pytest` and FastAPI's `TestClient`.
+Security tests are implemented using **pytest** and FastAPI's `TestClient`.
 
-Current test coverage includes:
+The current test suite validates:
 
-- Authentication required for `/health`
-- Invalid token rejection
-- Valid token acceptance
-- Security header validation
-- Authentication required for `/api/v1/profile`
-- Valid profile authentication
-- Invalid profile authentication
-- Public root endpoint
-- Security headers on protected endpoints
+* Authentication required for `/health`
+* Invalid token rejection
+* Valid token acceptance
+* Security header validation
+* Authentication required for `/api/v1/profile`
+* Valid profile authentication
+* Invalid profile authentication
+* Public root endpoint
+* Security headers on protected endpoints
 
-Run the tests locally:
+Run the complete test suite locally:
 
 ```powershell
-python -m pytest tests\test_security.py -v
+python -m pytest -v
 ```
 
-Expected result:
+Current result:
 
 ```text
 9 passed
+```
+
+### Security test coverage
+
+```text
+Valid JWT                  → 200 OK
+Missing JWT                → 401 Unauthorized
+Invalid JWT                → 401 Unauthorized
+Protected endpoint access  → Verified
+Security headers           → Verified
 ```
 
 ---
 
 ## Dependency Security
 
-The project uses `pip-audit` to identify known vulnerabilities in Python dependencies.
+The project uses **pip-audit** to identify known vulnerabilities in Python packages.
 
-Run locally:
+Run the audit locally:
 
 ```powershell
-python -m pip_audit -r requirements.txt
+python -m pip_audit
 ```
 
-Current result:
+The CI workflow also performs dependency auditing automatically.
 
-```text
-No known vulnerabilities found
-```
-
-Dependencies are explicitly version-pinned in:
+The project separates:
 
 ```text
 requirements.txt
-```
-
-Development dependencies are maintained separately in:
-
-```text
 requirements-dev.txt
 ```
+
+to distinguish application dependencies from development and security-testing tools.
 
 ---
 
 ## Environment Configuration
 
-Secrets are loaded from environment variables.
+Security-sensitive configuration is loaded through environment variables.
 
-Create a local `.env` file:
+Example local configuration:
 
 ```env
 API_TOKEN=your-development-token
+JWT_SECRET_KEY=your-local-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-The `.env` file is intentionally excluded from Git through `.gitignore`.
+The `.env` file should remain excluded from Git through `.gitignore`.
 
-Never commit real credentials, API keys, passwords, or production secrets to the repository.
+### Never commit:
+
+* API keys
+* Passwords
+* JWT secrets
+* Access tokens
+* Private keys
+* Production credentials
+* Sensitive configuration
+
+For CI, dedicated test-only environment values are configured in the GitHub Actions workflow.
 
 ---
 
@@ -363,26 +470,25 @@ Never commit real credentials, API keys, passwords, or production secrets to the
 
 ### Requirements
 
-- Python 3.12+
-- Git
-- Windows, Linux, or macOS
+* Python 3.12+
+* Git
+* Windows, Linux, or macOS
 
 ### 1. Clone the repository
 
 ```powershell
 git clone https://github.com/Shumii98/Secure-REST-API-DevSecOps.git
+
 cd Secure-REST-API-DevSecOps
 ```
 
 ### 2. Create a virtual environment
 
-Windows PowerShell:
-
 ```powershell
 python -m venv .venv
 ```
 
-Activate it:
+Activate it on Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -400,19 +506,9 @@ python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 ```
 
-### 5. Configure the API token
+### 5. Configure environment variables
 
-Create:
-
-```text
-.env
-```
-
-Add:
-
-```env
-API_TOKEN=dev-secret-token
-```
+Create a local `.env` file and configure the required development values.
 
 ### 6. Run the API
 
@@ -432,35 +528,44 @@ http://127.0.0.1:8000
 
 FastAPI automatically provides interactive OpenAPI documentation.
 
-Swagger UI:
+### Swagger UI
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-OpenAPI specification:
+### OpenAPI Specification
 
 ```text
 http://127.0.0.1:8000/openapi.json
 ```
 
+Swagger UI can be used to:
+
+* View API endpoints
+* Submit login credentials
+* Obtain a JWT
+* Authorize requests with a Bearer token
+* Test protected endpoints
+* Inspect API responses
+
 ---
 
 ## Security Testing Workflow
 
-A typical development workflow is:
+The development workflow follows a basic security feedback loop:
 
 ```text
 1. Modify application code
           │
           ▼
-2. Run security tests
+2. Run automated security tests
           │
           ▼
 3. Run dependency audit
           │
           ▼
-4. Review results
+4. Review security results
           │
           ▼
 5. Commit changes
@@ -469,34 +574,40 @@ A typical development workflow is:
 6. Push to GitHub
           │
           ▼
-7. GitHub Actions automatically runs security CI
+7. GitHub Actions runs Security CI
+          │
+          ▼
+8. Review CI result
 ```
 
-This provides an automated security feedback loop during development.
+This provides continuous security feedback throughout development.
 
 ---
 
 ## Technologies
 
-| Technology | Purpose |
-|------------|---------|
-| Python | Application development |
-| FastAPI | REST API framework |
-| Uvicorn | ASGI application server |
-| Pydantic | Data validation |
-| pytest | Automated testing |
-| HTTPX | API testing support |
-| pip-audit | Dependency vulnerability scanning |
-| python-dotenv | Environment configuration |
-| Git | Version control |
-| GitHub Actions | CI / DevSecOps automation |
+| Technology     | Purpose                           |
+| -------------- | --------------------------------- |
+| Python         | Application development           |
+| FastAPI        | REST API framework                |
+| Uvicorn        | ASGI application server           |
+| Pydantic       | Request/data validation           |
+| PyJWT          | JWT creation and verification     |
+| pwdlib         | Password hashing and verification |
+| pytest         | Automated security testing        |
+| HTTPX          | API testing support               |
+| pip-audit      | Dependency vulnerability scanning |
+| python-dotenv  | Environment configuration         |
+| Git            | Version control                   |
+| GitHub Actions | CI / DevSecOps automation         |
 
 ---
+
 ## Screenshots
 
 ### Swagger / OpenAPI Documentation
 
-The interactive Swagger UI exposes the available API endpoints and provides an interface for testing the REST API.
+The interactive Swagger UI provides an interface for viewing and testing the API endpoints.
 
 ![Swagger API Documentation](screenshots/swagger-api.png)
 
@@ -508,28 +619,36 @@ The protected `/health` endpoint returns a successful response when a valid Bear
 
 ### Automated Security Tests
 
-The security test suite validates authentication, authorization behavior, security headers, and protected endpoints.
+The security test suite validates authentication, protected endpoints, and security headers.
 
 ![Security Tests Passed](screenshots/security-tests-passed.png)
+
+---
+
 ## Security Testing Results
 
-### Local Testing
+### Automated Tests
 
 ```text
 9 passed
 ```
 
-### Dependency Audit
+### Authentication Testing
 
 ```text
-No known vulnerabilities found
+Valid credentials       → JWT issued
+Missing JWT             → 401 Unauthorized
+Invalid JWT             → 401 Unauthorized
+Valid JWT               → 200 OK
 ```
 
-### GitHub Actions
+### CI Status
 
 ```text
 Security CI: PASSING
 ```
+
+The repository's GitHub Actions workflow automatically executes the security test suite and dependency audit.
 
 ---
 
@@ -541,12 +660,14 @@ Do not use this project to access systems, APIs, networks, or data without appro
 
 Never commit:
 
-- API keys
-- Passwords
-- Access tokens
-- Private keys
-- Production credentials
-- Sensitive configuration
+* API keys
+* Passwords
+* Access tokens
+* Private keys
+* Production credentials
+* Sensitive configuration
+
+The demo credentials included in the source code are for local educational testing only and must not be reused in production.
 
 ---
 
@@ -554,18 +675,18 @@ Never commit:
 
 Potential future enhancements include:
 
-- JWT-based authentication
-- Role-based access control (RBAC)
-- Rate limiting
-- Structured security logging
-- Request ID / correlation IDs
-- Input validation improvements
-- HTTPS/TLS deployment
-- Container security scanning
-- Static application security testing (SAST)
-- Secret scanning
-- DAST integration
-- Security-focused API monitoring
+* Role-based access control (RBAC)
+* Rate limiting
+* Structured security logging
+* Request ID / correlation IDs
+* HTTPS/TLS deployment
+* Container security scanning
+* Static Application Security Testing (SAST)
+* Secret scanning
+* Dynamic Application Security Testing (DAST)
+* Security-focused API monitoring
+* Production-ready secret management
+* Database-backed user management
 
 ---
 
@@ -581,4 +702,4 @@ GitHub: [@Shumii98](https://github.com/Shumii98)
 
 ## License
 
-This project is intended as a cybersecurity portfolio and educational project.
+This project is released under the MIT License for educational and portfolio purposes.
