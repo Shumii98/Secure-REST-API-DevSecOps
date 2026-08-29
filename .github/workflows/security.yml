@@ -12,8 +12,11 @@ jobs:
   security:
     runs-on: ubuntu-latest
 
-    env:
+        env:
       API_TOKEN: dev-secret-token
+      JWT_SECRET_KEY: test-secret-key-for-ci-only
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
 
     steps:
       - name: Checkout repository
