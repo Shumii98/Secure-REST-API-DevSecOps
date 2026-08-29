@@ -1,3 +1,4 @@
+
 name: Security CI
 
 on:
@@ -12,7 +13,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
 
-        env:
+    env:
       API_TOKEN: dev-secret-token
       JWT_SECRET_KEY: test-secret-key-for-ci-only
       JWT_ALGORITHM: HS256
@@ -40,3 +41,4 @@ jobs:
       - name: Run dependency audit
         run: |
           python -m pip_audit
+
