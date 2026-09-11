@@ -156,3 +156,62 @@ def test_profile_returns_correct_role():
     assert response.status_code == 200
     assert response.json()["role"] == "analyst"
 
+def test_refresh_token_returns_new_tokens():
+    login_response = client.post(
+        "/auth/login",
+        json={"username": "admin-user", "password": "AdminPass@123"},
+    )
+    refresh_token = login_response.json()["refresh_token"]
+
+    response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+    assert "refresh_token" in response.json()
+
+
+def test_refresh_token_rotation_invalidates_old_token():
+    login_response = client.post(
+        "/auth/login",
+        json={"username": "admin-user", "password": "AdminPass@123"},
+    )
+    old_refresh_token = login_response.json()["refresh_token"]
+
+    # Use it once (rotates it)
+    client.post("/auth/refresh", json={"refresh_token": old_refresh_token})
+
+    # Reusing the same old token should now fail
+    response = client.post("/auth/refresh", json={"refresh_token": old_refresh_token})
+
+    assert response.status_code == 401
+
+
+def test_logout_revokes_refresh_token():
+    login_response = client.post(
+        "/auth/login",
+        json={"username": "admin-user", "password": "AdminPass@123"},
+    )
+    refresh_token = login_response.json()["refresh_token"]
+
+    logout_response = client.post("/auth/logout", json={"refresh_token": refresh_token})
+    assert logout_response.status_code == 200
+
+    # Using the revoked token afterward should fail
+    response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert response.status_code == 401
+
+
+def test_login_writes_audit_log():
+    from src.database import SessionLocal
+    from src.models import AuditLog
+
+    client.post(
+        "/auth/login",
+        json={"username": "admin-user", "password": "AdminPass@123"},
+    )
+
+    db = SessionLocal()
+    logs = db.query(AuditLog).filter_by(event_type="login_success").all()
+    db.close()
+
+    assert len(logs) >= 1

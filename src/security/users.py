@@ -1,25 +1,30 @@
 from pwdlib import PasswordHash
 
-password_hash = PasswordHash.recommended()
+from src.database import SessionLocal
+from src.models import User
 
-# Demo users for the authentication flow.
-# In a real system, this would be a database table.
-USERS = {
-    "security-user": {
-        "username": "security-user",
-        "password_hash": password_hash.hash("DevSecOps@123"),
-        "role": "analyst",
-    },
-    "admin-user": {
-        "username": "admin-user",
-        "password_hash": password_hash.hash("AdminPass@123"),
-        "role": "admin",
-    },
-}
+password_hash = PasswordHash.recommended()
 
 
 def get_user(username: str):
-    return USERS.get(username)
+    """
+    Looks up a user in the real database instead of the old
+    hardcoded USERS dict.
+    """
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter_by(username=username).first()
+        if not user or not user.is_active:
+            return None
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "password_hash": user.password_hash,
+            "role": user.role.value,
+        }
+    finally:
+        db.close()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
