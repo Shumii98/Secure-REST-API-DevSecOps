@@ -24,6 +24,10 @@ The project demonstrates how security controls can be integrated into the API de
 * 🔑 Environment-based secret configuration
 * 🔒 Password hashing with `pwdlib`
 * 📦 Separate application and development dependencies
+* 🗄️ SQLAlchemy + Alembic database layer (SQLite for local dev)
+* 🔄 Refresh token support with server-side revocation
+* ⏳ Rate limiting on authentication endpoints
+* 📋 Audit logging of authentication events
 
 The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow** for a Python REST API.
 
@@ -204,9 +208,7 @@ User passwords are not stored as plaintext.
 
 The project uses `pwdlib` for password hashing and verification.
 
-The demonstration users are defined in the application's user configuration for educational purposes.
-
-In a production system, user credentials should be stored in a properly secured database and managed through a production-grade identity/authentication system.
+User records are stored in a real database (SQLite for local development, with a straightforward path to Postgres in production) using SQLAlchemy models and managed through Alembic migrations.
 
 ---
 
@@ -271,7 +273,9 @@ API versioning provides a foundation for maintaining compatibility as the applic
 | Method | Endpoint                  | Authentication | Purpose                         |
 | ------ | ------------------------- | -------------- | ------------------------------- |
 | `GET`  | `/`                       | Public         | API status                      |
-| `POST` | `/auth/login`             | Public         | Authenticate user and issue JWT |
+| `POST` | `/auth/login`             | Public         | Authenticate user and issue JWT + refresh token |
+| `POST` | `/auth/refresh`           | Public         | Exchange a refresh token for a new token pair |
+| `POST` | `/auth/logout`            | Public         | Revoke a refresh token |
 | `GET`  | `/health`                 | Required       | Protected health check          |
 | `GET`  | `/api/v1/profile`         | Required       | Retrieve authenticated profile  |
 | `GET`  | `/api/v1/admin/dashboard` | Admin role     | Administrator dashboard         |
@@ -301,6 +305,7 @@ Successful response:
 ```json
 {
   "access_token": "<JWT_TOKEN>",
+  "refresh_token": "<REFRESH_TOKEN>",
   "token_type": "bearer"
 }
 ```
@@ -423,16 +428,28 @@ Secure-REST-API-DevSecOps/
 │
 ├── src/
 │   ├── main.py
+│   ├── database.py
+│   ├── models.py
+│   ├── dependencies.py
 │   │
 │   └── security/
 │       ├── __init__.py
 │       ├── auth.py
+│       ├── audit.py
 │       ├── jwt_config.py
 │       ├── middleware.py
 │       ├── schemas.py
 │       └── users.py
 │
+├── migrations/
+│   ├── env.py
+│   └── versions/
+│
+├── scripts/
+│   └── seed_admin.py
+│
 ├── tests/
+│   ├── conftest.py
 │   └── test_security.py
 │
 ├── screenshots/
@@ -510,9 +527,14 @@ The test suite validates:
 * Invalid profile authentication
 * Public root endpoint
 * Security headers on protected endpoints
+* Profile returns the correct user role
 * Analyst cannot access admin dashboard
 * Admin can access admin dashboard
 * Profile returns the correct user role
+* Refresh token issues a new token pair
+* Refresh token rotation invalidates the old token
+* Logout revokes the refresh token
+* Login writes an audit log entry
 
 Run the complete test suite:
 
@@ -523,7 +545,7 @@ python -m pytest -v
 Current test result:
 
 ```text
-12 passed
+16 passed
 ```
 
 ### Security Test Coverage
@@ -739,6 +761,9 @@ This provides continuous security feedback throughout development.
 | pytest         | Automated security testing        |
 | HTTPX          | API testing support               |
 | pip-audit      | Dependency vulnerability scanning |
+| SQLAlchemy     | Database ORM and models           |
+| Alembic        | Database migrations               |
+| slowapi        | Rate limiting                     |
 | python-dotenv  | Environment configuration         |
 | Git            | Version control                   |
 | GitHub Actions | CI / DevSecOps automation         |
@@ -833,8 +858,6 @@ The demonstration credentials included in the source code are for local educatio
 
 Potential future enhancements include:
 
-* Rate limiting
-* Structured security logging
 * Request ID / correlation IDs
 * HTTPS/TLS deployment
 * Container security scanning
@@ -843,9 +866,7 @@ Potential future enhancements include:
 * Dynamic Application Security Testing (DAST)
 * Security-focused API monitoring
 * Production-ready secret management
-* Database-backed user management
 * OAuth2 / OpenID Connect integration
-* Refresh token support
 * Production-grade identity management
 
 ---
