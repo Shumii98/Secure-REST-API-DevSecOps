@@ -11,21 +11,32 @@ from src.models import RefreshToken
 from src.security.jwt_config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     JWT_ALGORITHM,
+    JWT_AUDIENCE,
+    JWT_ISSUER,
     JWT_SECRET_KEY,
 )
-
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 security = HTTPBearer()
 
 
 def create_access_token(data: dict) -> str:
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     payload = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    payload["iat"] = now
     payload["exp"] = expire
-    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    payload["jti"] = str(uuid.uuid4())
+    payload["type"] = "access"
+    payload["iss"] = JWT_ISSUER
+    payload["aud"] = JWT_AUDIENCE
+
+    return jwt.encode(
+        payload,
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM,
+    )
 
 
 def _hash_token(value: str) -> str:
@@ -121,17 +132,27 @@ def verify_token(
 ):
     try:
         payload = jwt.decode(
-            credentials.credentials,
-            JWT_SECRET_KEY,
-            algorithms=[JWT_ALGORITHM],
-        )
-        return payload
+    credentials.credentials,
+    JWT_SECRET_KEY,
+    algorithms=[JWT_ALGORITHM],
+    issuer=JWT_ISSUER,
+    audience=JWT_AUDIENCE,
+)
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return payload
 
 
 def require_role(required_role: str):
@@ -141,6 +162,7 @@ def require_role(required_role: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to access this resource",
             )
+
         return payload
 
     return role_checker

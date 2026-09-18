@@ -15,6 +15,7 @@ from src.security.schemas import LoginRequest, TokenResponse, RefreshRequest
 from src.security.middleware import SecurityHeadersMiddleware
 from src.security.users import get_user, verify_password
 from src.security.audit import log_event
+from src.security.incidents import router as incidents_router
 
 
 app = FastAPI(
@@ -27,6 +28,7 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
+app.include_router(incidents_router)
 
 
 @app.get("/")
@@ -106,7 +108,7 @@ def logout(request: Request, body: RefreshRequest):
 
 
 @app.get("/health")
-def health_check(token=Depends(verify_token)):
+def health_check():
     return {"status": "healthy"}
 
 

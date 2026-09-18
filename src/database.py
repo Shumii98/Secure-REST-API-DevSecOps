@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 # Local dev default: SQLite file in your project root.
 # For production/Postgres later: postgresql://user:password@host:5432/dbname
