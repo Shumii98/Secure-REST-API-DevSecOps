@@ -1,4 +1,3 @@
-
 from fastapi.testclient import TestClient
 
 from src.main import app
@@ -9,7 +8,6 @@ client = TestClient(app)
 
 def get_valid_token():
     return create_access_token({"sub": "security-user"})
-
 
 
 def test_health_is_public():
@@ -39,8 +37,6 @@ def test_health_accepts_valid_token():
 
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
-
-
 
 
 def test_security_headers():
@@ -482,3 +478,34 @@ def test_user_only_sees_own_incidents():
         for incident in incidents
     )
 
+
+def test_refresh_endpoint_rejects_access_token():
+    access_token = create_access_token({"sub": "security-user"})
+
+    response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": access_token},
+    )
+
+    assert response.status_code == 401
+
+
+def test_protected_endpoint_rejects_refresh_token():
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "admin-user",
+            "password": "AdminPass@123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    refresh_token = login_response.json()["refresh_token"]
+
+    response = client.get(
+        "/api/v1/profile",
+        headers={"Authorization": f"Bearer {refresh_token}"},
+    )
+
+    assert response.status_code == 401

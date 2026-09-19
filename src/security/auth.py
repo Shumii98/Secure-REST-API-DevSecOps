@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from src.database import SessionLocal
 from src.models import RefreshToken
 from src.security.jwt_config import (
@@ -32,7 +33,11 @@ def create_access_token(data: dict) -> str:
     payload["iss"] = JWT_ISSUER
     payload["aud"] = JWT_AUDIENCE
 
-    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    return jwt.encode(
+        payload,
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM,
+    )
 
 
 def _hash_token(value: str) -> str:
@@ -41,27 +46,40 @@ def _hash_token(value: str) -> str:
 
 def create_refresh_token(data: dict) -> str:
     """
-    Issues a refresh token AND records it in the database, so it can
-    be revoked later (e.g. on logout) instead of living until natural
-    JWT expiry no matter what.
+    Issues a refresh token and records it in the database
+    so that it can later be revoked.
     """
     payload = data.copy()
     user_id = payload.pop("user_id")
-    jti = str(uuid.uuid4())
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    payload["exp"] = expire
-    payload["type"] = "refresh"
-    payload["jti"] = jti
 
-    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+    jti = str(uuid.uuid4())
+
+    payload["iat"] = now
+    payload["exp"] = expire
+    payload["jti"] = jti
+    payload["type"] = "refresh"
+    payload["iss"] = JWT_ISSUER
+    payload["aud"] = JWT_AUDIENCE
+
+    token = jwt.encode(
+        payload,
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM,
+    )
 
     db = SessionLocal()
+
     try:
-        db.add(RefreshToken(
-            user_id=user_id,
-            token_hash=_hash_token(jti),
-            expires_at=expire,
-        ))
+        db.add(
+            RefreshToken(
+                user_id=user_id,
+                token_hash=_hash_token(jti),
+                expires_at=expire,
+            )
+        )
         db.commit()
     finally:
         db.close()
@@ -71,7 +89,13 @@ def create_refresh_token(data: dict) -> str:
 
 def verify_refresh_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -84,13 +108,23 @@ def verify_refresh_token(token: str) -> dict:
             detail="Invalid token type",
         )
 
+    jti = payload.get("jti")
+
+    if not jti:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
     db = SessionLocal()
+
     try:
         record = (
             db.query(RefreshToken)
-            .filter_by(token_hash=_hash_token(payload["jti"]))
+            .filter_by(token_hash=_hash_token(jti))
             .first()
         )
+
         if not record or not record.is_valid():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,17 +138,30 @@ def verify_refresh_token(token: str) -> dict:
 
 def revoke_refresh_token(token: str) -> None:
     try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
     except jwt.InvalidTokenError:
         return
 
+    jti = payload.get("jti")
+
+    if not jti:
+        return
+
     db = SessionLocal()
+
     try:
         record = (
             db.query(RefreshToken)
-            .filter_by(token_hash=_hash_token(payload.get("jti", "")))
+            .filter_by(token_hash=_hash_token(jti))
             .first()
         )
+
         if record:
             record.revoked = True
             record.revoked_at = datetime.now(timezone.utc)
