@@ -7,3 +7,4 @@ argon2-cffi==25.1.0
 SQLAlchemy==2.0.31
 alembic==1.13.2
 slowapi==0.1.9
+streamlit
