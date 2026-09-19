@@ -22,3 +22,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.db
+
+# Runtime security logs
+logs/security.log
