@@ -1,5 +1,7 @@
 from collections import Counter
+from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 
 class SecurityAlertEngine:
@@ -7,6 +9,16 @@ class SecurityAlertEngine:
 
     def __init__(self, events: list[dict[str, Any]]):
         self.events = events
+
+    @staticmethod
+    def _alert_id() -> str:
+        """Generate a unique identifier for a security alert."""
+        return f"ALT-{uuid4().hex[:12].upper()}"
+
+    @staticmethod
+    def _detected_at() -> str:
+        """Return the alert detection timestamp in UTC."""
+        return datetime.now(timezone.utc).isoformat()
 
     def detect_failed_login_burst(
         self,
@@ -32,12 +44,30 @@ class SecurityAlertEngine:
 
         for ip_address, count in ip_counts.items():
             if count >= threshold:
+                matching_events = [
+                    event
+                    for event in failed_logins
+                    if event.get("ip_address", "unknown") == ip_address
+                ]
+
+                request_ids = sorted(
+                    {
+                        event["request_id"]
+                        for event in matching_events
+                        if event.get("request_id")
+                    }
+                )
+
                 alerts.append(
                     {
+                        "alert_id": self._alert_id(),
                         "alert_type": "AUTHENTICATION_FAILURE_BURST",
+                        "rule": "failed_login_burst",
                         "severity": "HIGH",
+                        "detected_at": self._detected_at(),
                         "source_ip": ip_address,
                         "event_count": count,
+                        "request_ids": request_ids,
                         "description": (
                             f"{count} failed login attempts detected "
                             f"from {ip_address}"
@@ -60,7 +90,7 @@ class SecurityAlertEngine:
             if event.get("message") == "login_failed"
         ]
 
-        users = []
+        users: list[str] = []
 
         for event in failed_logins:
             detail = event.get("user") or event.get("detail", "")
@@ -74,12 +104,39 @@ class SecurityAlertEngine:
 
         for user, count in user_counts.items():
             if count >= threshold:
+                matching_events = [
+                    event
+                    for event in failed_logins
+                    if (event.get("user") or event.get("detail", "")) == user
+                ]
+
+                request_ids = sorted(
+                    {
+                        event["request_id"]
+                        for event in matching_events
+                        if event.get("request_id")
+                    }
+                )
+
+                source_ips = sorted(
+                    {
+                        event["ip_address"]
+                        for event in matching_events
+                        if event.get("ip_address")
+                    }
+                )
+
                 alerts.append(
                     {
+                        "alert_id": self._alert_id(),
                         "alert_type": "TARGETED_ACCOUNT_FAILURE",
+                        "rule": "targeted_account_failure",
                         "severity": "MEDIUM",
+                        "detected_at": self._detected_at(),
                         "target": user,
+                        "source_ips": source_ips,
                         "event_count": count,
+                        "request_ids": request_ids,
                         "description": (
                             f"{count} failed authentication events "
                             f"associated with {user}"
