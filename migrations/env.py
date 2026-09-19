@@ -6,14 +6,14 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
+import src.models  # noqa: F401 — registers all models on Base.metadata
+from src.database import Base
+
 # Make `src` importable when running `alembic` from the project root.
 sys.path.insert(0, os.getcwd())
 
 # Load DATABASE_URL and other settings from .env
 load_dotenv()
-
-import src.models  # noqa: F401 — registers all models on Base.metadata
-from src.database import Base
 
 config = context.config
 
@@ -36,6 +36,7 @@ def run_migrations_offline():
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
@@ -46,8 +47,13 @@ def run_migrations_online():
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+
         with context.begin_transaction():
             context.run_migrations()
 
