@@ -25,3 +25,6 @@ Thumbs.db
 
 # Runtime security logs
 logs/security.log
+
+# Runtime security monitoring reports
+reports/security_report.json
