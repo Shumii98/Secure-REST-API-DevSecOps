@@ -1,3 +1,4 @@
+
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -30,8 +31,10 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
+
 app.include_router(incidents_router)
 
 
@@ -51,7 +54,9 @@ def login(request: Request, body: LoginRequest):
             "login_failed",
             ip_address=client_ip,
             detail=f"username={body.username}",
+            request_id=request.state.request_id,
         )
+
         security_logger.warning(
             "login_failed",
             extra={
@@ -60,6 +65,7 @@ def login(request: Request, body: LoginRequest):
                 "user": body.username,
             },
         )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -68,11 +74,18 @@ def login(request: Request, body: LoginRequest):
     access_token = create_access_token(
         {"sub": user["username"], "role": user["role"]}
     )
+
     refresh_token = create_refresh_token(
         {"sub": user["username"], "user_id": user["id"]}
     )
 
-    log_event("login_success", user_id=user["id"], ip_address=client_ip)
+    log_event(
+        "login_success",
+        user_id=user["id"],
+        ip_address=client_ip,
+        request_id=request.state.request_id,
+    )
+
     security_logger.info(
         "login_success",
         extra={
@@ -106,11 +119,18 @@ def refresh(request: Request, body: RefreshRequest):
     access_token = create_access_token(
         {"sub": user["username"], "role": user["role"]}
     )
+
     new_refresh_token = create_refresh_token(
         {"sub": user["username"], "user_id": user["id"]}
     )
 
-    log_event("token_refreshed", user_id=user["id"], ip_address=client_ip)
+    log_event(
+        "token_refreshed",
+        user_id=user["id"],
+        ip_address=client_ip,
+        request_id=request.state.request_id,
+    )
+
     security_logger.info(
         "token_refreshed",
         extra={
@@ -130,8 +150,15 @@ def refresh(request: Request, body: RefreshRequest):
 @app.post("/auth/logout")
 def logout(request: Request, body: RefreshRequest):
     revoke_refresh_token(body.refresh_token)
+
     client_ip = request.client.host if request.client else None
-    log_event("logout", ip_address=client_ip)
+
+    log_event(
+        "logout",
+        ip_address=client_ip,
+        request_id=request.state.request_id,
+    )
+
     security_logger.info(
         "logout",
         extra={
@@ -139,6 +166,7 @@ def logout(request: Request, body: RefreshRequest):
             "ip_address": client_ip,
         },
     )
+
     return {"message": "Logged out successfully"}
 
 
