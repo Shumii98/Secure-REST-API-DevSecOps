@@ -2,7 +2,7 @@
 
 A security-focused REST API built with **FastAPI**, demonstrating practical **DevSecOps, application security, authentication, authorization, secure API design, and security testing** practices.
 
-The project implements JWT authentication, refresh-token rotation and revocation, role-based access control (RBAC), password hashing, security headers, rate limiting, audit logging, security incident management, database migrations, automated testing, dependency auditing, and GitHub Actions CI.
+The project implements JWT authentication, refresh-token rotation and revocation, role-based access control (RBAC), password hashing, security headers, rate limiting, audit logging, security incident management, database migrations, automated security testing, dependency auditing, SAST, secret scanning, and GitHub Actions CI.
 
 ---
 
@@ -15,20 +15,26 @@ The project demonstrates how security controls can be integrated throughout the 
 * JWT Bearer-token authentication
 * Access and refresh token support
 * Refresh-token rotation and server-side revocation
+* Token type validation
+* JWT issuer and audience validation
 * Protected API endpoints
 * Role-Based Access Control (RBAC)
-* Password hashing with `pwdlib`
+* Password hashing with `pwdlib` and Argon2
 * HTTP security headers through custom middleware
 * JWT expiration handling
 * Authentication rate limiting
 * Authentication audit logging
 * Security incident management API
-* User ownership controls for incidents
+* Incident ownership controls
 * SQLAlchemy database layer
 * Alembic database migrations
 * Environment-based configuration
 * Automated security testing with `pytest`
+* Code coverage enforcement
+* Static Application Security Testing with Bandit
 * Dependency vulnerability scanning with `pip-audit`
+* Secret scanning with Gitleaks
+* Code linting with Ruff
 * GitHub Actions Security CI
 * Versioned API endpoints
 
@@ -39,59 +45,60 @@ The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow** for 
 ## Security Architecture
 
 ```text
-                         ┌──────────────────────┐
-                         │      API Client      │
-                         └──────────┬───────────┘
-                                    │
+                         +----------------------+
+                         |      API Client      |
+                         +----------+-----------+
+                                    |
                               HTTP Request
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │     FastAPI API      │
-                         └──────────┬───────────┘
-                                    │
-                   ┌────────────────┴────────────────┐
-                   │                                 │
-                   ▼                                 ▼
-          ┌──────────────────┐             ┌──────────────────┐
-          │ JWT Authentication│             │ Security Headers │
-          │ Bearer Tokens     │             │ Middleware       │
-          └────────┬─────────┘             └────────┬─────────┘
-                   │                                 │
-                   └──────────────┬──────────────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────────┐
-                         │ Authorization / RBAC │
-                         │ Role Verification    │
-                         └──────────┬───────────┘
-                                    │
-                       ┌────────────┴────────────┐
-                       │                         │
-                       ▼                         ▼
-                ┌───────────────┐         ┌─────────────────┐
-                │ Analyst User  │         │   Admin User    │
-                │ Standard      │         │ Elevated Access │
-                └───────┬───────┘         └────────┬────────┘
-                        │                            │
-                        ▼                            ▼
-                ┌───────────────┐         ┌─────────────────┐
-                │ Profile API   │         │ Admin Dashboard │
-                └───────┬───────┘         └────────┬────────┘
-                        │                            │
-                        └────────────┬───────────────┘
-                                     │
-                                     ▼
-                          ┌──────────────────────┐
-                          │ Incident Management  │
-                          │ API + Audit Logging  │
-                          └──────────┬───────────┘
-                                     │
-                                     ▼
-                          ┌──────────────────────┐
-                          │ SQLAlchemy Database  │
-                          │ SQLite / Migrations  │
-                          └──────────────────────┘
+                                    |
+                                    v
+                         +----------------------+
+                         |     FastAPI API      |
+                         +----------+-----------+
+                                    |
+                  +-----------------+-----------------+
+                  |                                   |
+                  v                                   v
+        +---------------------+             +---------------------+
+        | JWT Authentication  |             |  Security Headers   |
+        | Bearer Tokens       |             |     Middleware      |
+        +----------+----------+             +----------+----------+
+                   |                                   |
+                   +----------------+------------------+
+                                    |
+                                    v
+                         +----------------------+
+                         | Authorization / RBAC |
+                         |  Role Verification   |
+                         +----------+-----------+
+                                    |
+                         +----------+----------+
+                         |                     |
+                         v                     v
+                  +------------+        +-------------+
+                  |  Analyst   |        |    Admin    |
+                  |    User    |        |    User     |
+                  +-----+------+        +------+------+
+                        |                      |
+                        v                      v
+                  +-----------+         +--------------+
+                  | Profile   |         | Admin        |
+                  | API       |         | Dashboard    |
+                  +-----+-----+         +------+-------+
+                        |                      |
+                        +----------+-----------+
+                                   |
+                                   v
+                        +----------------------+
+                        | Incident Management  |
+                        | API + Audit Logging  |
+                        +----------+-----------+
+                                   |
+                                   v
+                        +----------------------+
+                        | SQLAlchemy Database  |
+                        | SQLite / Migrations  |
+                        +----------------------+
 ```
 
 ---
@@ -100,28 +107,48 @@ The goal is to demonstrate a practical **Secure SDLC / DevSecOps workflow** for 
 
 ```text
 Git Push / Pull Request
-            │
-            ▼
-   ┌─────────────────────┐
-   │   GitHub Actions     │
-   │    Security CI       │
-   └──────────┬──────────┘
-              │
-       ┌──────┴──────┐
-       │             │
-       ▼             ▼
-   ┌─────────┐   ┌─────────────┐
-   │  pytest │   │  pip-audit  │
-   │ Security│   │ Dependency  │
-   │  Tests  │   │    Scan     │
-   └────┬────┘   └──────┬──────┘
-        │               │
-        └───────┬───────┘
-                ▼
-        ┌─────────────┐
-        │  CI Result  │
-        └─────────────┘
+            |
+            v
+   +---------------------+
+   |   GitHub Actions    |
+   |    Security CI      |
+   +----------+----------+
+              |
+              v
+   +---------------------+
+   | Install Dependencies|
+   +----------+----------+
+              |
+      +-------+--------+------------------+
+      |       |        |                  |
+      v       v        v                  v
+    Ruff    Bandit   pytest           pip-audit
+    Lint     SAST    + Coverage       Dependency
+                         Tests           Scan
+      |       |        |                  |
+      +-------+--------+------------------+
+              |
+              v
+          Gitleaks
+       Secret Scanning
+              |
+              v
+       +--------------+
+       |   CI Result  |
+       +--------------+
 ```
+
+The GitHub Actions workflow currently performs:
+
+1. Repository checkout
+2. Python 3.12 setup
+3. Dependency installation
+4. Ruff linting
+5. Bandit SAST
+6. Pytest security/functional testing
+7. Coverage enforcement at 85%
+8. pip-audit dependency scanning
+9. Gitleaks secret scanning
 
 ---
 
@@ -135,32 +162,37 @@ Authentication flow:
 
 ```text
 Username + Password
-        │
-        ▼
+        |
+        v
 POST /auth/login
-        │
-        ▼
+        |
+        v
 Credentials validated
-        │
-        ▼
+        |
+        v
 Access + Refresh Tokens generated
-        │
-        ▼
+        |
+        v
 Authorization: Bearer <token>
-        │
-        ▼
+        |
+        v
 Protected endpoint
 ```
 
-JWT access tokens contain information such as:
+JWT access tokens include security claims such as:
 
 * `sub` — authenticated username
 * `role` — authorization role
-* `exp` — token expiration timestamp
+* `iat` — token issue time
+* `exp` — token expiration time
+* `jti` — unique token identifier
+* `type` — token type
+* `iss` — JWT issuer
+* `aud` — JWT audience
 
 Protected endpoints reject requests without valid authentication.
 
-Invalid or expired access tokens result in:
+Invalid, expired, incorrectly typed, or incorrectly scoped JWTs are rejected with:
 
 ```text
 401 Unauthorized
@@ -176,35 +208,42 @@ The implementation includes:
 
 * Refresh-token generation
 * Refresh-token verification
+* Unique JWT identifiers (`jti`)
+* Refresh-token database tracking
 * Token rotation
 * Server-side revocation
 * Logout-based revocation
-* Rejection of previously rotated/revoked refresh tokens
+* Expiration handling
+* Issuer and audience validation
+* Token-type validation
+* Rejection of previously rotated or revoked refresh tokens
 
 Example flow:
 
 ```text
 Login
-  │
-  ├── Access Token
-  │
-  └── Refresh Token
-          │
-          ▼
+  |
+  +-- Access Token
+  |
+  +-- Refresh Token
+          |
+          v
     POST /auth/refresh
-          │
-          ▼
- Old refresh token revoked
-          │
-          ▼
- New access + refresh tokens
+          |
+          v
+  Old refresh token revoked
+          |
+          v
+  New access + refresh tokens
 ```
+
+This provides a server-side mechanism for invalidating refresh tokens rather than relying only on JWT expiration.
 
 ---
 
 ## 3. Role-Based Access Control
 
-The API implements role-based authorization using the role contained in the authenticated JWT.
+The API implements role-based authorization using the authenticated user's role.
 
 Demonstration roles include:
 
@@ -242,7 +281,7 @@ This demonstrates the distinction between authentication and authorization:
 
 User passwords are not stored as plaintext.
 
-The project uses `pwdlib` and Argon2-based password hashing for password protection and verification.
+The project uses `pwdlib` with Argon2-based password hashing for password protection and verification.
 
 User data is managed through:
 
@@ -257,6 +296,8 @@ The database layer can be adapted for a production database such as PostgreSQL.
 ## 5. Public and Protected Endpoints
 
 The health endpoint is intentionally **public** so monitoring systems can verify API availability without authentication.
+
+Public functionality includes:
 
 ```text
 GET /
@@ -276,7 +317,7 @@ POST /api/v1/incidents
 GET /api/v1/incidents/{incident_id}
 ```
 
-The admin dashboard additionally requires the `admin` role.
+The administrator dashboard additionally requires the `admin` role.
 
 ---
 
@@ -305,6 +346,7 @@ The login endpoint is protected against excessive authentication attempts:
 
 ```text
 POST /auth/login
+
 5 requests per minute
 ```
 
@@ -333,7 +375,7 @@ This provides an auditable trail for authentication activity.
 
 ## 9. Security Incident Management
 
-The API includes a dedicated incident-management component.
+The API includes a dedicated security incident-management component.
 
 Incident functionality includes:
 
@@ -346,7 +388,7 @@ Incident functionality includes:
 * Authorization checks
 * Protection against unauthorized incident access
 
-Example incident endpoint:
+Example endpoint:
 
 ```text
 POST /api/v1/incidents
@@ -362,7 +404,7 @@ Example incident structure:
 }
 ```
 
-The implementation also tests ownership controls to ensure that one user cannot retrieve another user's incident.
+Ownership controls are tested to ensure that one authenticated user cannot retrieve another user's incident.
 
 ---
 
@@ -547,38 +589,24 @@ Secure-REST-API-DevSecOps/
 
 The project uses **GitHub Actions** to automatically execute security checks on pushes and pull requests targeting the `main` branch.
 
-Workflow:
-
-```text
-Git Push / Pull Request
-          │
-          ▼
-   Checkout Repository
-          │
-          ▼
-      Setup Python
-          │
-          ▼
- Install Dependencies
-          │
-     ┌────┴────┐
-     ▼         ▼
-  pytest   pip-audit
-     │         │
-     ▼         ▼
-Security   Dependency
- Tests        Scan
-     │         │
-     └────┬────┘
-          ▼
-      CI Result
-```
-
 The workflow is defined in:
 
 ```text
 .github/workflows/security.yml
 ```
+
+### CI Security Controls
+
+| Control             | Tool       | Purpose                              |
+| ------------------- | ---------- | ------------------------------------ |
+| Linting             | Ruff       | Code quality and static checks       |
+| SAST                | Bandit     | Python security analysis             |
+| Automated tests     | pytest     | Security and functional validation   |
+| Coverage            | pytest-cov | Minimum 85% coverage enforcement     |
+| Dependency scanning | pip-audit  | Known Python package vulnerabilities |
+| Secret scanning     | Gitleaks   | Detect committed secrets             |
+
+The CI pipeline is designed to provide automated security feedback before changes are accepted into the main development branch.
 
 ---
 
@@ -592,6 +620,7 @@ The test suite validates:
 * Public root endpoint
 * JWT authentication
 * Invalid token rejection
+* Token type validation
 * Protected profile endpoint
 * Security headers
 * RBAC enforcement
@@ -606,6 +635,13 @@ The test suite validates:
 * Incident ownership
 * Unauthorized incident access prevention
 * Authenticated incident listing
+* User isolation for incident records
+
+### Latest Test Result
+
+```text
+25 passed
+```
 
 Run the complete test suite:
 
@@ -613,26 +649,48 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-The latest local test run should be used as the authoritative test count because the suite can change as new security controls are added.
+Run with coverage:
+
+```powershell
+python -m pytest -v --cov=src --cov-report=term-missing
+```
 
 ---
 
 # Security Test Coverage
 
 ```text
-Public /health                 → 200 OK
-Missing JWT on /profile        → 401 Unauthorized
-Invalid JWT                    → 401 Unauthorized
-Valid JWT                      → 200 OK
-Expired JWT                    → Authentication rejected
-Analyst → Admin endpoint       → 403 Forbidden
-Admin → Admin endpoint         → 200 OK
-Refresh token rotation         → Verified
-Refresh token revocation       → Verified
-Logout revocation              → Verified
-Security headers               → Verified
-Incident ownership             → Verified
+Public /health                  -> 200 OK
+Missing JWT on /profile         -> 401 Unauthorized
+Invalid JWT                     -> 401 Unauthorized
+Access token used as refresh    -> 401 Unauthorized
+Refresh token used as access    -> 401 Unauthorized
+Valid JWT                       -> 200 OK
+Expired JWT                     -> Authentication rejected
+Analyst -> Admin endpoint       -> 403 Forbidden
+Admin -> Admin endpoint         -> 200 OK
+Refresh token rotation          -> Verified
+Old refresh token               -> Rejected
+Refresh token revocation        -> Verified
+Logout revocation               -> Verified
+Security headers                -> Verified
+Incident ownership              -> Verified
+Unauthorized incident access   -> 404 Not Found
 ```
+
+---
+
+# Static Application Security Testing
+
+The project uses **Bandit** for Python source-code security analysis.
+
+Run locally:
+
+```powershell
+bandit -r src -ll
+```
+
+Bandit is also executed automatically by the GitHub Actions Security CI workflow.
 
 ---
 
@@ -663,6 +721,24 @@ requirements-dev.txt
 
 ---
 
+# Secret Scanning
+
+The GitHub Actions pipeline uses **Gitleaks** to identify accidentally committed secrets.
+
+The project follows secure configuration practices by keeping sensitive values outside source code whenever possible.
+
+Never commit:
+
+* API keys
+* Passwords
+* JWT secrets
+* Access tokens
+* Private keys
+* Production credentials
+* Sensitive configuration
+
+---
+
 # Environment Configuration
 
 Security-sensitive configuration is loaded through environment variables.
@@ -677,15 +753,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 The `.env` file should remain excluded from Git through `.gitignore`.
 
-### Never Commit
-
-* API keys
-* Passwords
-* JWT secrets
-* Access tokens
-* Private keys
-* Production credentials
-* Sensitive configuration
+For production deployments, secrets should be managed through a dedicated secrets-management solution rather than committed to source control.
 
 ---
 
@@ -715,6 +783,14 @@ Activate on Windows PowerShell:
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
+
+If PowerShell execution policy prevents activation, use:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+Then activate the environment again.
 
 ## 3. Install Application Dependencies
 
@@ -783,27 +859,30 @@ The development workflow follows a security feedback loop:
 
 ```text
 1. Modify application code
-          │
-          ▼
+          |
+          v
 2. Run automated tests
-          │
-          ▼
-3. Run dependency audit
-          │
-          ▼
-4. Review security results
-          │
-          ▼
-5. Commit changes
-          │
-          ▼
-6. Push to GitHub
-          │
-          ▼
-7. GitHub Actions runs Security CI
-          │
-          ▼
-8. Review CI result
+          |
+          v
+3. Run security analysis
+          |
+          v
+4. Run dependency audit
+          |
+          v
+5. Review security results
+          |
+          v
+6. Commit changes
+          |
+          v
+7. Push to GitHub
+          |
+          v
+8. GitHub Actions runs Security CI
+          |
+          v
+9. Review CI result
 ```
 
 This provides continuous security feedback throughout development.
@@ -812,105 +891,120 @@ This provides continuous security feedback throughout development.
 
 # Technologies
 
-| Technology     | Purpose                           |
-| -------------- | --------------------------------- |
-| Python         | Application development           |
-| FastAPI        | REST API framework                |
-| Uvicorn        | ASGI application server           |
-| Pydantic       | Request/data validation           |
-| PyJWT          | JWT creation and verification     |
-| pwdlib         | Password hashing and verification |
-| Argon2         | Password hashing algorithm        |
-| SQLAlchemy     | Database ORM                      |
-| Alembic        | Database migrations               |
-| SQLite         | Local development database        |
-| pytest         | Automated security testing        |
-| HTTPX          | API testing support               |
-| pip-audit      | Dependency vulnerability scanning |
-| slowapi        | Rate limiting                     |
-| python-dotenv  | Environment configuration         |
-| Git            | Version control                   |
-| GitHub Actions | CI / DevSecOps automation         |
+| Technology     | Purpose                             |
+| -------------- | ----------------------------------- |
+| Python         | Application development             |
+| FastAPI        | REST API framework                  |
+| Uvicorn        | ASGI application server             |
+| Pydantic       | Request and data validation         |
+| PyJWT          | JWT creation and verification       |
+| pwdlib         | Password hashing and verification   |
+| Argon2         | Password hashing algorithm          |
+| SQLAlchemy     | Database ORM                        |
+| Alembic        | Database migrations                 |
+| SQLite         | Local development database          |
+| pytest         | Automated security testing          |
+| pytest-cov     | Test coverage                       |
+| HTTPX          | API testing support                 |
+| pip-audit      | Dependency vulnerability scanning   |
+| Bandit         | Static Application Security Testing |
+| Gitleaks       | Secret scanning                     |
+| Ruff           | Code linting                        |
+| slowapi        | Rate limiting                       |
+| python-dotenv  | Environment configuration           |
+| Git            | Version control                     |
+| GitHub Actions | CI / DevSecOps automation           |
 
 ---
 
 # Screenshots
 
-Recommended project evidence includes:
+Project evidence can include screenshots demonstrating:
 
 ### Swagger / OpenAPI Documentation
 
-Interactive Swagger UI demonstrates the available API endpoints and authentication workflow.
+Interactive Swagger UI demonstrates the available API endpoints, authentication workflow, RBAC behavior, and incident-management functionality.
 
-```text
-screenshots/swagger-api.png
-```
-
-### Public Health Check
-
-The `/health` endpoint is publicly accessible and returns:
-
-```json
-{
-  "status": "healthy"
-}
-```
-
-### Security Tests
+### Security Test Results
 
 Test evidence demonstrates authentication, authorization, security headers, refresh-token controls, and incident-management security.
 
-```text
-screenshots/security-tests-passed.png
-```
+### GitHub Actions Security CI
+
+CI evidence demonstrates automated execution of:
+
+* Ruff
+* Bandit
+* pytest with coverage
+* pip-audit
+* Gitleaks
+
+Add screenshots to the repository only after confirming the corresponding files exist in the `screenshots/` directory.
 
 ---
 
 # Security Results
 
-The project validates the following security behaviors:
+The project validates the following security behaviors.
 
-### Authentication
+## Authentication
 
 ```text
-Valid credentials        → JWT issued
-Missing JWT              → 401 Unauthorized
-Invalid JWT              → 401 Unauthorized
-Valid JWT                → 200 OK
+Valid credentials        -> JWT issued
+Missing JWT              -> 401 Unauthorized
+Invalid JWT              -> 401 Unauthorized
+Access token as refresh  -> 401 Unauthorized
+Refresh token as access  -> 401 Unauthorized
+Valid JWT                -> 200 OK
 ```
 
-### Authorization
+## Authorization
 
 ```text
-Analyst → Admin endpoint → 403 Forbidden
-Admin   → Admin endpoint → 200 OK
+Analyst -> Admin endpoint -> 403 Forbidden
+Admin   -> Admin endpoint -> 200 OK
 ```
 
-### Token Security
+## Token Security
 
 ```text
-Refresh token rotation   → Verified
-Old refresh token        → Rejected
-Logout revocation        → Verified
+Refresh token rotation   -> Verified
+Old refresh token        -> Rejected
+Logout revocation        -> Verified
+Token type validation    -> Verified
+Issuer validation        -> Verified
+Audience validation      -> Verified
 ```
 
-### Security Headers
+## Security Headers
 
 ```text
-X-Content-Type-Options → Verified
-X-Frame-Options        → Verified
-Referrer-Policy        → Verified
-Permissions-Policy     → Verified
+X-Content-Type-Options -> Verified
+X-Frame-Options        -> Verified
+Referrer-Policy        -> Verified
+Permissions-Policy     -> Verified
 ```
 
-### Incident Security
+## Incident Security
 
 ```text
-Unauthenticated create        → 401
-Authenticated create          → 201
-Owner retrieves incident      → 200
-Unauthorized owner access    → 404
-Authenticated incident list   → 200
+Unauthenticated create       -> 401
+Authenticated create         -> 201
+Owner retrieves incident     -> 200
+Unauthorized owner access    -> 404
+Authenticated incident list  -> 200
+User data isolation          -> Verified
+```
+
+## Automated Security Validation
+
+```text
+pytest       -> 25 tests passed
+Bandit       -> Executed in CI
+pip-audit    -> Executed in CI
+Gitleaks     -> Executed in CI
+Ruff         -> Executed in CI
+Coverage     -> Minimum 85% enforced
 ```
 
 ---
@@ -938,19 +1032,20 @@ Demonstration credentials are intended only for local educational testing and mu
 
 Potential future enhancements include:
 
-* Request ID / correlation IDs
-* HTTPS/TLS deployment
+* Request ID and correlation ID support
+* HTTPS/TLS deployment configuration
+* Containerization
 * Container security scanning
-* Static Application Security Testing (SAST)
-* Secret scanning
 * Dynamic Application Security Testing (DAST)
 * Security-focused API monitoring
-* Production-ready secret management
+* Production-ready secrets management
 * OAuth2 / OpenID Connect integration
 * Production-grade identity management
 * Centralized security event monitoring
 * SIEM integration
 * Security alerting and dashboards
+* Production database deployment
+* API observability and metrics
 
 ---
 
@@ -960,7 +1055,7 @@ Potential future enhancements include:
 
 Cybersecurity / Information Security
 
-GitHub: [@Shumii98](https://github.com/Shumii98)
+GitHub: **Shumii98**
 
 ---
 
