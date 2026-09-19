@@ -1,5 +1,4 @@
 from pwdlib import PasswordHash
-
 from src.database import SessionLocal
 from src.models import User
 

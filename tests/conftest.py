@@ -6,8 +6,8 @@ import tempfile
 _test_db_fd, _test_db_path = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_test_db_path}"
 
-from src.database import Base, engine, SessionLocal  # noqa: E402
-from src.models import User, UserRole  # noqa: E402
+from src.database import Base, SessionLocal, engine
+from src.models import User, UserRole
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,4 +24,5 @@ _db.add(_analyst)
 _db.commit()
 _db.close()
 from src.main import limiter
+
 limiter.enabled = False

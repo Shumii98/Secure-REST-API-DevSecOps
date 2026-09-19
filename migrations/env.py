@@ -3,8 +3,8 @@ import sys
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
 # Make `src` importable when running `alembic` from the project root.
 sys.path.insert(0, os.getcwd())
@@ -12,8 +12,8 @@ sys.path.insert(0, os.getcwd())
 # Load DATABASE_URL and other settings from .env
 load_dotenv()
 
-from src.database import Base  # noqa: E402
-import src.models  # noqa: E402, F401 — registers all models on Base.metadata
+import src.models  # noqa: F401 — registers all models on Base.metadata
+from src.database import Base
 
 config = context.config
 

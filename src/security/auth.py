@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from src.database import SessionLocal
 from src.models import RefreshToken
 from src.security.jwt_config import (
@@ -15,6 +14,7 @@ from src.security.jwt_config import (
     JWT_ISSUER,
     JWT_SECRET_KEY,
 )
+
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 security = HTTPBearer()
@@ -32,11 +32,7 @@ def create_access_token(data: dict) -> str:
     payload["iss"] = JWT_ISSUER
     payload["aud"] = JWT_AUDIENCE
 
-    return jwt.encode(
-        payload,
-        JWT_SECRET_KEY,
-        algorithm=JWT_ALGORITHM,
-    )
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def _hash_token(value: str) -> str:
@@ -132,12 +128,12 @@ def verify_token(
 ):
     try:
         payload = jwt.decode(
-    credentials.credentials,
-    JWT_SECRET_KEY,
-    algorithms=[JWT_ALGORITHM],
-    issuer=JWT_ISSUER,
-    audience=JWT_AUDIENCE,
-)
+            credentials.credentials,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

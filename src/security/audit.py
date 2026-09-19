@@ -2,7 +2,7 @@ from src.database import SessionLocal
 from src.models import AuditLog
 
 
-def log_event(event_type: str, user_id: str = None, ip_address: str = None, detail: str = None):
+def log_event(event_type: str, user_id: str | None = None, ip_address: str | None = None, detail: str | None = None):
     """
     Records an auth-related event (login success/failure, logout, etc.)
     into the audit_logs table.

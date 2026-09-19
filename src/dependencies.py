@@ -4,7 +4,7 @@ FastAPI dependency for database sessions.
 Use this instead of Flask's teardown_appcontext pattern — FastAPI
 injects and closes the session per-request via Depends().
 """
-from typing import Generator
+from collections.abc import Generator
 
 from src.database import SessionLocal
 

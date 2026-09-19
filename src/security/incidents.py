@@ -1,25 +1,15 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
-from src.database import SessionLocal
+from src.dependencies import get_db
 from src.models import Incident
 from src.security.auth import verify_token
 from src.security.schemas import IncidentCreate, IncidentResponse
-
 
 router = APIRouter(
     prefix="/api/v1/incidents",
     tags=["Incidents"],
 )
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post(

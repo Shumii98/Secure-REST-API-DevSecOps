@@ -10,20 +10,19 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
+from pwdlib import PasswordHash
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
+    Column,
     DateTime,
     Enum,
     ForeignKey,
     Index,
+    String,
 )
 from sqlalchemy.orm import relationship
-from pwdlib import PasswordHash
 
 from src.database import Base
-
 
 _password_hash = PasswordHash.recommended()
 

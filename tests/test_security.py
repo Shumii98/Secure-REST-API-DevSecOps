@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from src.main import app
 from src.security.auth import create_access_token
 
-
 client = TestClient(app)
 
 

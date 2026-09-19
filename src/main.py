@@ -1,22 +1,25 @@
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
+from src.logging_config import security_logger, setup_logging
+from src.security.audit import log_event
 from src.security.auth import (
     create_access_token,
     create_refresh_token,
-    verify_token,
     require_role,
-    verify_refresh_token,
     revoke_refresh_token,
+    verify_refresh_token,
+    verify_token,
 )
-from src.security.schemas import LoginRequest, TokenResponse, RefreshRequest
-from src.security.middleware import SecurityHeadersMiddleware
-from src.security.users import get_user, verify_password
-from src.security.audit import log_event
 from src.security.incidents import router as incidents_router
+from src.security.middleware import SecurityHeadersMiddleware
+from src.security.request_id import RequestIDMiddleware
+from src.security.schemas import LoginRequest, RefreshRequest, TokenResponse
+from src.security.users import get_user, verify_password
 
+setup_logging()
 
 app = FastAPI(
     title="Secure REST API",
@@ -28,6 +31,7 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestIDMiddleware)
 app.include_router(incidents_router)
 
 
@@ -48,6 +52,14 @@ def login(request: Request, body: LoginRequest):
             ip_address=client_ip,
             detail=f"username={body.username}",
         )
+        security_logger.warning(
+            "login_failed",
+            extra={
+                "request_id": request.state.request_id,
+                "ip_address": client_ip,
+                "user": body.username,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -61,6 +73,14 @@ def login(request: Request, body: LoginRequest):
     )
 
     log_event("login_success", user_id=user["id"], ip_address=client_ip)
+    security_logger.info(
+        "login_success",
+        extra={
+            "request_id": request.state.request_id,
+            "user": user["username"],
+            "ip_address": client_ip,
+        },
+    )
 
     return {
         "access_token": access_token,
@@ -91,6 +111,14 @@ def refresh(request: Request, body: RefreshRequest):
     )
 
     log_event("token_refreshed", user_id=user["id"], ip_address=client_ip)
+    security_logger.info(
+        "token_refreshed",
+        extra={
+            "request_id": request.state.request_id,
+            "user": user["username"],
+            "ip_address": client_ip,
+        },
+    )
 
     return {
         "access_token": access_token,
@@ -104,6 +132,13 @@ def logout(request: Request, body: RefreshRequest):
     revoke_refresh_token(body.refresh_token)
     client_ip = request.client.host if request.client else None
     log_event("logout", ip_address=client_ip)
+    security_logger.info(
+        "logout",
+        extra={
+            "request_id": request.state.request_id,
+            "ip_address": client_ip,
+        },
+    )
     return {"message": "Logged out successfully"}
 
 

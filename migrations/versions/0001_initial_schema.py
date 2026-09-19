@@ -7,8 +7,8 @@ Create Date: 2026-09-11
 Works on both SQLite and Postgres — uses generic String/Enum types
 instead of Postgres-only UUID/ENUM.
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0001"
 down_revision = None
