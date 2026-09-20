@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.dependencies import get_db
@@ -22,7 +21,7 @@ def create_incident(
     token: dict = Depends(verify_token),
     db: Session = Depends(get_db),
 ):
-    owner_id = token.get("sub")
+    owner_id = token.get("user_id")
 
     if not owner_id:
         raise HTTPException(
@@ -53,7 +52,7 @@ def list_incidents(
     token: dict = Depends(verify_token),
     db: Session = Depends(get_db),
 ):
-    owner_id = token.get("sub")
+    owner_id = token.get("user_id")
 
     if not owner_id:
         raise HTTPException(
@@ -80,7 +79,7 @@ def get_incident(
     token: dict = Depends(verify_token),
     db: Session = Depends(get_db),
 ):
-    owner_id = token.get("sub")
+    owner_id = token.get("user_id")
 
     if not owner_id:
         raise HTTPException(

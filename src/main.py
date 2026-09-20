@@ -73,7 +73,7 @@ def login(request: Request, body: LoginRequest):
         )
 
     access_token = create_access_token(
-        {"sub": user["username"], "role": user["role"]}
+        {"sub": user["username"], "user_id": user["id"], "role": user["role"]}
     )
 
     refresh_token = create_refresh_token(
@@ -118,7 +118,7 @@ def refresh(request: Request, body: RefreshRequest):
     revoke_refresh_token(body.refresh_token)
 
     access_token = create_access_token(
-        {"sub": user["username"], "role": user["role"]}
+        {"sub": user["username"], "user_id": user["id"], "role": user["role"]}
     )
 
     new_refresh_token = create_refresh_token(

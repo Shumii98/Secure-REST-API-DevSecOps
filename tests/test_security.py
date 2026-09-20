@@ -368,12 +368,17 @@ def test_user_cannot_access_another_users_incident():
 
     incident_id = create_response.json()["id"]
 
-    other_user_token = create_access_token(
-        {
-            "sub": "admin-user",
-            "role": "admin",
-        }
+    admin_login = client.post(
+        "/auth/login",
+        json={
+            "username": "admin-user",
+            "password": "AdminPass@123",
+        },
     )
+
+    assert admin_login.status_code == 200
+
+    other_user_token = admin_login.json()["access_token"]
 
     response = client.get(
         f"/api/v1/incidents/{incident_id}",
@@ -457,12 +462,17 @@ def test_user_only_sees_own_incidents():
 
     assert create_response.status_code == 201
 
-    admin_token = create_access_token(
-        {
-            "sub": "admin-user",
-            "role": "admin",
-        }
+    admin_login = client.post(
+        "/auth/login",
+        json={
+            "username": "admin-user",
+            "password": "AdminPass@123",
+        },
     )
+
+    assert admin_login.status_code == 200
+
+    admin_token = admin_login.json()["access_token"]
 
     response = client.get(
         "/api/v1/incidents",
