@@ -1,9 +1,10 @@
-
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 
+from src.database import SessionLocal
 from src.logging_config import security_logger, setup_logging
 from src.security.audit import log_event
 from src.security.auth import (
@@ -172,7 +173,27 @@ def logout(request: Request, body: RefreshRequest):
 
 @app.get("/health")
 def health_check():
+    """Liveness check — is the process running at all?"""
     return {"status": "healthy"}
+
+
+@app.get("/readiness")
+def readiness_check():
+    """
+    Readiness check — can this instance actually serve traffic?
+    Verifies the database is reachable, which /health does not.
+    """
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "ready", "database": "connected"}
+    except Exception:
+        db.close()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable",
+        )
 
 
 @app.get("/api/v1/profile")

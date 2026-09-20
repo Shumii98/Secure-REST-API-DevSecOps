@@ -1,0 +1,14 @@
+.venv/
+.venv-clean/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.gitignore
+.env
+*.db
+logs/
+tests/
+screenshots/
+README.md
+requirements-dev.txt
